@@ -1,0 +1,6 @@
+.idea
+.target
+*.iml
+
+.src/test
+application-development.properties
