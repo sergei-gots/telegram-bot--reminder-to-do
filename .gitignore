@@ -2,5 +2,5 @@
 .target
 *.iml
 
-.src/test
+.test
 application-development.properties
