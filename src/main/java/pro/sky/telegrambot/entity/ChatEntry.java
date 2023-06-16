@@ -3,15 +3,14 @@ package pro.sky.telegrambot.entity;
 import javax.persistence.*;
 
 @Entity
-//@Table("chats")
-public class Chat {
+@Table(name="chats")
+public class ChatEntry {
     @Id
     //Value should be retrieved from telegram update.message.chat.id() in a listener.
-    private long id;
+    private Long id;
 
 
-
-    public enum States {
+    public enum ChatStates {
         START
     }
 
@@ -20,23 +19,30 @@ public class Chat {
         ENG,
         MOK
     }
-    private States state;
+
+
+    private ChatStates state;
 
     private Languages lang;
 
+    @Column(name = "user_first_name")
     private String userFirstName;
 
     private String message;
 
-    public Chat() {
+    public ChatEntry() {
     }
 
-    public Chat(long id, States state, Languages lang, String userFirstName, String message) {
+    public ChatEntry(Long id, ChatStates state, Languages lang, String userFirstName, String message) {
         this.id = id;
         this.state = state;
         this.lang = lang;
         this.userFirstName = userFirstName;
         this.message = message;
+    }
+
+    public ChatEntry(Long id, String userFirstName) {
+        this(id, ChatStates.START, Languages.ENG, userFirstName, "");
     }
 
 
@@ -48,11 +54,11 @@ public class Chat {
         this.id = id;
     }
 
-    public States getState() {
+    public ChatStates getState() {
         return state;
     }
 
-    public void setState(States state) {
+    public void setState(ChatStates state) {
         this.state = state;
     }
 

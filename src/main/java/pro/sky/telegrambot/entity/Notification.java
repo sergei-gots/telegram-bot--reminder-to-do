@@ -12,14 +12,14 @@ public class Notification {
 
     @JoinColumn(name="chat_id")
     @ManyToOne
-    private Chat chat;
+    private ChatEntry chat;
 
     OffsetDateTime targetTime;
 
     String message;
 
     public Notification(Long id,
-                        Chat chat,
+                        ChatEntry chat,
                         OffsetDateTime targetTime,
                         String message
     ) {
@@ -40,11 +40,11 @@ public class Notification {
         this.id = id;
     }
 
-    public Chat getChat() {
+    public ChatEntry getChat() {
         return chat;
     }
 
-    public void setChatId(Chat chat) {
+    public void setChatId(ChatEntry chat) {
         this.chat = chat;
     }
 

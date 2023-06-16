@@ -3,6 +3,7 @@ package pro.sky.telegrambot.listener;
 import com.pengrad.telegrambot.TelegramBot;
 import com.pengrad.telegrambot.UpdatesListener;
 import com.pengrad.telegrambot.model.Update;
+import com.pengrad.telegrambot.request.SendMessage;
 import com.pengrad.telegrambot.response.SendResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,11 +41,14 @@ public class TelegramBotUpdatesListener implements UpdatesListener {
             String text = update.message().text();
             logger.info("Processing update: text={}, chat-id={}", text, chatId);
             // Process your updates here
-            SendResponse sendResponse = telegramBot.execute(
-                (text.equals("/start") || text.equals("/ушедомс"))?
-                    chatService.handleStart(update) :
-                    chatService.handle(update)
-            );
+            SendMessage sendMessage = null;
+            switch(text) {
+                case "/start"   :
+                case "/ушедомс" : sendMessage = chatService.handleStart(update) ; break;
+                case "/list"    : sendMessage = chatService.handleList(update)   ; break;
+                default         : sendMessage = chatService.handle(update);
+            }
+            SendResponse sendResponse = telegramBot.execute(sendMessage);
             if(!sendResponse.isOk()) {
                 logger.error("Some error during telegramBot.execute; sendResponse.errorCode()={},",
                         sendResponse.errorCode()
