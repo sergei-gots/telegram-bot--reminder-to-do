@@ -41,14 +41,18 @@ public class TelegramBotUpdatesListener implements UpdatesListener {
             String text = update.message().text();
             logger.info("Processing update: text={}, chat-id={}", text, chatId);
             // Process your updates here
-            SendMessage sendMessage = null;
+            String resultText = null;
             switch(text) {
                 case "/start"   :
-                case "/ушедомс" : sendMessage = chatService.handleStart(update) ; break;
-                case "/list"    : sendMessage = chatService.handleList(update)   ; break;
-                default         : sendMessage = chatService.handle(update);
+                case "/ушедомс" : resultText = chatService.handleStart(update)  ; break;
+                case "/list"    : resultText = chatService.handleList(update)   ; break;
+                case "/create"  : resultText = chatService.handleCreate(update) ; break;
+                case "/author" :  resultText = "Sergei Gots, https://github.com/Sergei-Gots";
+                default         : resultText = chatService.handle(update);
             }
-            SendResponse sendResponse = telegramBot.execute(sendMessage);
+            SendResponse sendResponse = telegramBot.execute(
+                    new SendMessage(chatId,resultText)
+            );
             if(!sendResponse.isOk()) {
                 logger.error("Some error during telegramBot.execute; sendResponse.errorCode()={},",
                         sendResponse.errorCode()
