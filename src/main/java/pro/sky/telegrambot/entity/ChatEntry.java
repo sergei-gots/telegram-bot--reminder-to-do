@@ -11,7 +11,8 @@ public class ChatEntry {
 
 
     public enum ChatStates {
-        START
+        START,
+        INPUT_DATE, INPUT_EVENT
     }
 
 
