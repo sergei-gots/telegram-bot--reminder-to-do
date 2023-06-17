@@ -2,6 +2,7 @@ package pro.sky.telegrambot.listener;
 
 import com.pengrad.telegrambot.TelegramBot;
 import com.pengrad.telegrambot.UpdatesListener;
+import com.pengrad.telegrambot.model.Message;
 import com.pengrad.telegrambot.model.Update;
 import com.pengrad.telegrambot.request.SendMessage;
 import com.pengrad.telegrambot.response.SendResponse;
@@ -37,6 +38,11 @@ public class TelegramBotUpdatesListener implements UpdatesListener {
     public int process(List<Update> updates) {
         updates.forEach(update -> {
             logger.info("Processing update: {}", update);
+            Message message = update.message();
+            if(message == null) {
+                logger.error("message is null");
+                return;
+            }
             Long chatId= update.message().chat().id();
             String text = update.message().text();
             logger.info("Processing update: text={}, chat-id={}", text, chatId);
@@ -45,6 +51,7 @@ public class TelegramBotUpdatesListener implements UpdatesListener {
             switch(text) {
                 case "/start"   :
                 case "/ушедомс" : resultText = chatService.handleStart(update)  ; break;
+                case "/reset"   : resultText = chatService.handleReset(update)  ; break;
                 case "/list"    : resultText = chatService.handleList(update)   ; break;
                 case "/create"  : resultText = chatService.handleCreate(update) ; break;
                 case "/author" :  resultText = "Sergei Gots, https://github.com/Sergei-Gots";

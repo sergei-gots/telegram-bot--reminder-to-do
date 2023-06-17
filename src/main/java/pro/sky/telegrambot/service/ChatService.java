@@ -3,6 +3,7 @@ package pro.sky.telegrambot.service;
 import com.pengrad.telegrambot.model.Chat;
 import com.pengrad.telegrambot.model.Message;
 import com.pengrad.telegrambot.model.Update;
+import org.apache.commons.lang3.time.DateUtils;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,11 +17,24 @@ import pro.sky.telegrambot.listener.TelegramBotUpdatesListener;
 import pro.sky.telegrambot.repository.ChatRepository;
 import pro.sky.telegrambot.repository.NotificationRepository;
 
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.Collection;
+import java.util.Date;
 
 @Service
 public class ChatService {
 
+    private static final String LIST_OF_COMMANDS =
+            "\n You can control me by sending these commands:\n" +
+            "\n /create - to create a new notification" +
+            "\n /list - to view the list of all your notifications" +
+            "\n /reset - to reset me and discard notification's draft we may have made.";
+    private static final String[] DATE_FORMATS = { "dd/MM/yyyy", "dd-MM-yyyy", "dd.MM.yyyy" };
+    private static final String[] TIME_FORMATS = { "HH:mm" };
     final private Logger logger = LoggerFactory.getLogger(TelegramBotUpdatesListener.class);
     final private ChatRepository chatRepository;
     final private NotificationRepository notificationRepository;
@@ -32,14 +46,13 @@ public class ChatService {
     }
 
     /**
-     * Handles updates with texts like /start (can have other values depending on language
-     * used by a user)
+     * Handles /start-updates
      *
-     * @return SendMessage to be displayed to the user
+     * @return list of commands a user can apply.
      **/
     public String handleStart(Update update) {
-        logger.info("handleStart(update) with update.message().text()=\"{}\"",
-                update.message().text());
+        printMethodInfoLog("handleStart(Update update)", update);
+
         Message message = update.message();
         //If there is some uncompleted chat with the current chat id
         updateChatEntry(update, ChatStates.START, "");
@@ -49,9 +62,8 @@ public class ChatService {
         return (message.text().equals("/ушедомс")) ? "Шумбрат, " : "Hello, " +
                 message.chat().firstName() + "!\n" +
                 "I can help you create a new notification for you and show list of your notifications.\n" +
-                "\n You can control me by sending these commands:\n" +
-                "\n /create - to create a new notification" +
-                "\n /list - to view the list of all your notifications";
+                LIST_OF_COMMANDS;
+
     }
 
     /**
@@ -95,17 +107,74 @@ public class ChatService {
      * Handles all the updates for which there are no specified handler in the ChatServise class.
      **/
     public String handle(Update update) {
-        logger.info("handle(update) with update.message().text()=\"{}\"",
-                update.message().text());
+        printMethodInfoLog("handle(Update update)", update);
+
         ChatEntry chatEntry = getChatEntry(update);
         switch (chatEntry.getState()) {
-            case INPUT_EVENT:
-                return processInputEvent(update, chatEntry);
+            case INITIAL_STATE: return handleInitialStateByDefault(update);
+            case INPUT_EVENT:   return handleInputEventState(update, chatEntry);
+            case INPUT_DATE:    return handleInputDateState(update, chatEntry);
             default:
                 logger.warn("There is not processed state within handle(update)");
-                return "This piece of algorithm is under construction:(";
+                return "This piece of my algorithm is under construction:(";
         }
     }
+
+    private String handleInputDateState(Update update, ChatEntry chatEntry) {
+        printMethodInfoLog("handleInputDateState(Update update, ChatEntry chatEntry)", update);
+
+        Date date = null;
+        // Create an instance of SimpleDateFormat used for parsing/formatting
+        // the string representation of date according to the chosen pattern
+        SimpleDateFormat formatter = new SimpleDateFormat(DATE_FORMATS[0]);
+        try {
+            date = formatter.parse(update.message().text());
+        }
+        catch (ParseException e) {
+            logger.info(chatEntry.getUserFirstName() + "\", DateTimeParseException is thrown with the message: {}", e.getMessage());
+            return "It looks like you made a mistake writing the date.\n Your input was: \"" +
+                    update.message().text() +
+                    "\". \n Could you try to write once again please. " +
+                    "The date format should be like \"" + DATE_FORMATS[0] + "\":";
+        }
+
+        logger.debug("date input by user = {}", date);
+        System.out.println("date = " + date);
+
+        //Check that date is not in past
+        if (date.getTime() < (new Date()).getTime()-86_400_000) {
+            return chatEntry.getUserFirstName() + ", date you entered belongs to the past. \nI expect to notify you" +
+                    "only  in future. \nPlease, write me a correct one:";
+        }
+        java.sql.Date sqlDate = new java.sql.Date(date.getTime());
+
+        chatEntry.setDate(sqlDate);
+        chatEntry.setState(ChatStates.INPUT_TIME);
+        chatRepository.save(chatEntry);
+
+        // Using DateFormat format method we can create a string
+        // representation of a date with the defined format.
+        String dateAsString = formatter.format(date);
+        return "Good, you will be notified about \"" + chatEntry.getMessage() + "\" on \"" +
+                dateAsString + "\".\n" +
+                "Next, enter, please, the time you are going to be notified.\n" +
+                "It should be in the next format: \n\"" +
+                DATE_FORMATS[0] + "\": ";
+
+    }
+
+    /** Invoked in case when new user attempts to interact with the bot
+     * but sends a text not equals to  '/start'
+     *
+     * @return the instruction to type '/start' to init dialog with the bot.
+     */
+    private String handleInitialStateByDefault(Update update) {
+        printMethodInfoLog("handleInitialStateByDefault(Update update, ChatEntry chatEntry)", update);
+
+        return "Hello, " + update.message().chat().firstName() + ":)" +
+                "\n To start dialog with me just say /start !";
+    }
+
 
     /**
      * Processes update when the chat is in the state of waiting from the user
@@ -115,7 +184,9 @@ public class ChatService {
      * @param chatEntry chat entry instance we've been working with
      * @return instruction to the user what to do next
      */
-    private String processInputEvent(Update update, ChatEntry chatEntry) {
+    private String handleInputEventState(Update update, ChatEntry chatEntry) {
+        printMethodInfoLog("handleInputEventState(Update update, ChatEntry chatEntry)", update);
+
         String notifiedEvent = update.message().text();
         if (notifiedEvent.isEmpty() || notifiedEvent.isBlank()) {
             return "I expect to get what are going to do that I should notify you about.\n" +
@@ -133,7 +204,8 @@ public class ChatService {
         chatRepository.save(chatEntry);
         return "Well, you will be notified about \"" + notifiedEvent + "\".\n" +
                 "Now, next, enter, please, the date when I should notify you.\n" +
-                "It should be presented in the next format: \n\"DD-MM-YYYY\": ";
+                "It should be presented in the next format: \n\"" +
+                DATE_FORMATS[0] + "\": ";
 
     }
 
@@ -160,6 +232,8 @@ public class ChatService {
      * @return message containing all the notifications for the update's user.
      **/
     public String handleList(Update update) {
+        printMethodInfoLog("handleList(Update update)", update);
+
         Long chatId = update.message().chat().id();
 
         Collection<Notification> notifications = notificationRepository.findByChat_id(chatId);
@@ -185,6 +259,8 @@ public class ChatService {
      **/
 
     public String handleCreate(Update update) {
+        printMethodInfoLog("handleCreate(Update update)", update);
+
         updateChatEntry(update,
                 ChatStates.INPUT_EVENT,
                 ""
@@ -193,5 +269,27 @@ public class ChatService {
                 "What kind of action to do should I notify you about?\n" +
                 "I can guess it could be \"to do homework\", couldn't it be?\n" +
                 "if it is so, type /yes, otherwise, write your option, just in form \"to do something useful\":)";
+    }
+
+    /**
+     * Handles update with text "/reset". Acts almost similar to the method "/start".
+     * "/reset" is introduced to make bot psychologically comfort.
+     *
+     * @return text containing instruction what user should enter to create a new reminder.
+     **/
+    public String handleReset(Update update) {
+        printMethodInfoLog("handleRest(Update update)", update);
+
+        //If there is some uncompleted chat with the current chat id
+        updateChatEntry(update, ChatStates.START, "");
+        return "I'm reset and ready to work:)\n" +
+                LIST_OF_COMMANDS;
+
+    }
+
+    private void printMethodInfoLog(String methodSignature, Update update) {
+        logger.info("{} with update.message().text()=\"{}\"",
+                methodSignature,
+                update.message().text());
     }
 }

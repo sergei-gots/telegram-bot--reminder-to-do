@@ -21,3 +21,8 @@ CREATE TABLE notifications
 -- changeset sgots:2
 ALTER TABLE chats
     ADD COLUMN lang INT2 DEFAULT (0);
+
+-- changeset sgots:3
+ALTER TABLE chats
+    ADD CONSTRAINT date_should_not_be_before_today CHECK (target_date >= CURRENT_DATE);
+
