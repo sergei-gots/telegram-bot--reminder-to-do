@@ -248,7 +248,7 @@ public class ChatService {
         printMethodInfoLog("handleInitialStateByDefault(Update update, ChatEntry chatEntry)", update);
 
         return "Hello, " + update.message().chat().firstName() + ":)" +
-                "\n To start dialog with me just say /start !";
+                "\n To start dialog with me just say /start or /ушедомс !";
     }
 
 
