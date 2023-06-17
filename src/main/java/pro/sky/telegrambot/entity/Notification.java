@@ -1,6 +1,7 @@
 package pro.sky.telegrambot.entity;
 
 import javax.persistence.*;
+import java.sql.Timestamp;
 import java.time.OffsetDateTime;
 
 @Entity
@@ -8,19 +9,19 @@ import java.time.OffsetDateTime;
 public class Notification {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private long id;
 
     @JoinColumn(name="chat_id")
     @ManyToOne
     private ChatEntry chat;
 
-    OffsetDateTime targetTime;
+    Timestamp targetTime;
 
     String message;
 
-    public Notification(Long id,
+    public Notification(long id,
                         ChatEntry chat,
-                        OffsetDateTime targetTime,
+                        Timestamp targetTime,
                         String message
     ) {
         this.id = id;
@@ -32,11 +33,11 @@ public class Notification {
     public Notification() {
     }
 
-    public Long getId() {
+    public long getId() {
         return id;
     }
 
-    public void setId(Long id) {
+    public void setId(long id) {
         this.id = id;
     }
 
@@ -48,11 +49,11 @@ public class Notification {
         this.chat = chat;
     }
 
-    public OffsetDateTime getTargetTime() {
+    public Timestamp getTargetTime() {
         return targetTime;
     }
 
-    public void setTargetTime(OffsetDateTime targetTime) {
+    public void setTargetTime(Timestamp targetTime) {
         this.targetTime = targetTime;
     }
 

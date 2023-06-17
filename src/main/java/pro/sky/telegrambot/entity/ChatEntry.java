@@ -16,7 +16,9 @@ public class ChatEntry {
         INITIAL_STATE,
         START,
         INPUT_EVENT,
-        INPUT_TIME, INPUT_DATE
+        INPUT_TIME,
+        INPUT_DATE,
+        COMPLETED
     }
 
 

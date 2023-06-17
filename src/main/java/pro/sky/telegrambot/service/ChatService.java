@@ -3,7 +3,6 @@ package pro.sky.telegrambot.service;
 import com.pengrad.telegrambot.model.Chat;
 import com.pengrad.telegrambot.model.Message;
 import com.pengrad.telegrambot.model.Update;
-import org.apache.commons.lang3.time.DateUtils;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -17,25 +16,34 @@ import pro.sky.telegrambot.listener.TelegramBotUpdatesListener;
 import pro.sky.telegrambot.repository.ChatRepository;
 import pro.sky.telegrambot.repository.NotificationRepository;
 
+import java.sql.Time;
+import java.sql.Timestamp;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeParseException;
 import java.util.Collection;
 import java.util.Date;
 
 @Service
 public class ChatService {
 
+    final private Logger logger = LoggerFactory.getLogger(TelegramBotUpdatesListener.class);
+    private static final long TIME_ZONE_DELTA_SHOULD_BE_REPLACED_WITH_TIME_ZONE_HANDLING = 3_600_000 * 3;
+    private static final long ONE_MINUTE = 60_000;
     private static final String LIST_OF_COMMANDS =
             "\n You can control me by sending these commands:\n" +
-            "\n /create - to create a new notification" +
-            "\n /list - to view the list of all your notifications" +
-            "\n /reset - to reset me and discard notification's draft we may have made.";
-    private static final String[] DATE_FORMATS = { "dd/MM/yyyy", "dd-MM-yyyy", "dd.MM.yyyy" };
-    private static final String[] TIME_FORMATS = { "HH:mm" };
-    final private Logger logger = LoggerFactory.getLogger(TelegramBotUpdatesListener.class);
+                    "\n /create - to create a new notification" +
+                    "\n /list - to view the list of all your notifications" +
+                    "\n /reset - to reset me and discard notification's draft we may have made.";
+    private static final String[] DATE_FORMATS = {"dd/MM/yyyy", "dd-MM-yyyy", "dd.MM.yyyy"};
+    private static final String[] TIME_FORMATS = {"HH:mm"};
+
+    // Create an instance of SimpleDateFormat used for parsing/formatting
+    // the string representation of date according to the chosen pattern
+    private final SimpleDateFormat dateFormatter = new SimpleDateFormat(DATE_FORMATS[0]);
+    // Create an instance of SimpleDateFormat used for parsing/formatting
+    // the string representation of time according to the chosen pattern
+    SimpleDateFormat timeFormatter = new SimpleDateFormat(TIME_FORMATS[0]);
+
     final private ChatRepository chatRepository;
     final private NotificationRepository notificationRepository;
 
@@ -63,7 +71,6 @@ public class ChatService {
                 message.chat().firstName() + "!\n" +
                 "I can help you create a new notification for you and show list of your notifications.\n" +
                 LIST_OF_COMMANDS;
-
     }
 
     /**
@@ -111,26 +118,103 @@ public class ChatService {
 
         ChatEntry chatEntry = getChatEntry(update);
         switch (chatEntry.getState()) {
-            case INITIAL_STATE: return handleInitialStateByDefault(update);
-            case INPUT_EVENT:   return handleInputEventState(update, chatEntry);
-            case INPUT_DATE:    return handleInputDateState(update, chatEntry);
+            case INITIAL_STATE:
+                return handleInitialStateByDefault(update);
+            case INPUT_EVENT:
+                return handleInputEventState(update, chatEntry);
+            case INPUT_DATE:
+                return handleInputDateState(update, chatEntry);
+            case INPUT_TIME:
+                return handleInputTimeState(update, chatEntry);
+            case START:
+            case COMPLETED:
+                return handleCompleted(update);
             default:
-                logger.warn("There is not processed state within handle(update)");
+                logger.warn("TO DEVELOPER: There is not processed state within handle(update)");
                 return "This piece of my algorithm is under construction:(";
         }
+    }
+
+    private String handleCompleted(Update update) {
+        printMethodInfoLog("handleInputCompleted(Update update)", update);
+        updateChatEntry(update, ChatStates.START, "");
+        return "Oops)) Hi, again. I almost fell asleep:)) What are we going to do, " +
+                update.message().chat().firstName() +
+                "?\n Here are my options below." +
+                LIST_OF_COMMANDS;
+
+    }
+
+    private String handleInputTimeState(Update update, ChatEntry chatEntry) {
+        printMethodInfoLog("handleInputTimeState(Update update, ChatEntry chatEntry)", update);
+
+        Date time = null;
+        try {
+            time = timeFormatter.parse(update.message().text());
+        } catch (ParseException e) {
+            logger.info(chatEntry.getUserFirstName() + "\", DateTimeParseException is thrown with the message: {}", e.getMessage());
+            return "It looks like you made a mistake writing the time.\n Your input was: \"" +
+                    update.message().text() +
+                    "\". \n Could you try to write once again please. " +
+                    "The time format should be like \"" + TIME_FORMATS[0] + "\":";
+        }
+
+        logger.debug("time input by user = {}", time);
+        //logger.debug is not working for time being though there is definition of logger level in application.properties
+        System.out.println("time = " + time);
+
+        //TODO TIME ZONE ISSUE HOW NEED TO BE SOLVED
+        // **System.out.println("time = " + time);
+        // System.out.println("time.getTime() = " + time.getTime());
+        // System.out.println("chatEntry.getDate() = " + chatEntry.getDate());
+        // System.out.println("chatEntry.getDate().getTime() = " + chatEntry.getDate().getTime());
+        // System.out.println("System.currentTimeMillis() = " + System.currentTimeMillis());
+        // System.out.println("new Date(System.currentTimeMillis() = " + new Date(System.currentTimeMillis()));
+
+
+        //Check that time is for more than one minute in future
+
+        long targetTime = time.getTime() + chatEntry.getDate().getTime();
+        if (targetTime <
+                System.currentTimeMillis()  - TIME_ZONE_DELTA_SHOULD_BE_REPLACED_WITH_TIME_ZONE_HANDLING) {
+            return chatEntry.getUserFirstName() + ", date-n-time you entered is already in past. \n" +
+                    "\nPlease, tell me another time:";
+        }
+        if (targetTime <
+                System.currentTimeMillis() + 60_000 - TIME_ZONE_DELTA_SHOULD_BE_REPLACED_WITH_TIME_ZONE_HANDLING) {
+            return chatEntry.getUserFirstName() + ", date-n-time you entered are too near to be in past. \n" +
+                    "\nPlease, tell me another time:";
+        }
+
+        chatEntry.setTime(new java.sql.Time(time.getTime()));
+        chatEntry.setState(ChatStates.COMPLETED);
+        chatRepository.save(chatEntry);
+
+        notificationRepository.save(new Notification(
+                0,
+                chatEntry,
+                new Timestamp(time.getTime() +
+                        chatEntry.getDate().getTime() +
+                        TIME_ZONE_DELTA_SHOULD_BE_REPLACED_WITH_TIME_ZONE_HANDLING),
+                chatEntry.getMessage()));
+
+        // Using DateFormat format method we can create a string
+        // representation of a date with the defined format.
+        String timeAsString = timeFormatter.format(time);
+        String dateAsString = dateFormatter.format(chatEntry.getDate());
+        return "Well, you will be certainly notified about \"" + chatEntry.getMessage() + "\" on \"" +
+                dateAsString + "\" at \"" + timeAsString + "\":)\n\nSee ya!";
+
     }
 
     private String handleInputDateState(Update update, ChatEntry chatEntry) {
         printMethodInfoLog("handleInputDateState(Update update, ChatEntry chatEntry)", update);
 
         Date date = null;
-        // Create an instance of SimpleDateFormat used for parsing/formatting
-        // the string representation of date according to the chosen pattern
-        SimpleDateFormat formatter = new SimpleDateFormat(DATE_FORMATS[0]);
+
         try {
-            date = formatter.parse(update.message().text());
-        }
-        catch (ParseException e) {
+            date = dateFormatter.parse(update.message().text());
+        } catch (ParseException e) {
             logger.info(chatEntry.getUserFirstName() + "\", DateTimeParseException is thrown with the message: {}", e.getMessage());
             return "It looks like you made a mistake writing the date.\n Your input was: \"" +
                     update.message().text() +
@@ -138,11 +222,12 @@ public class ChatService {
                     "The date format should be like \"" + DATE_FORMATS[0] + "\":";
         }
 
+        //logger.debug is not working for time being though there is definition of logger level in application.properties
         logger.debug("date input by user = {}", date);
         System.out.println("date = " + date);
 
         //Check that date is not in past
-        if (date.getTime() < (new Date()).getTime()-86_400_000) {
+        if (date.getTime() < (new Date()).getTime() - 86_400_000) {
             return chatEntry.getUserFirstName() + ", date you entered belongs to the past. \nI expect to notify you" +
                     "only  in future. \nPlease, write me a correct one:";
         }
@@ -154,16 +239,17 @@ public class ChatService {
 
         // Using DateFormat format method we can create a string
         // representation of a date with the defined format.
-        String dateAsString = formatter.format(date);
+        String dateAsString = dateFormatter.format(date);
         return "Good, you will be notified about \"" + chatEntry.getMessage() + "\" on \"" +
                 dateAsString + "\".\n" +
                 "Next, enter, please, the time you are going to be notified.\n" +
-                "It should be in the next format: \n\"" +
-                DATE_FORMATS[0] + "\": ";
+                "It should be in the format: \n\"" +
+                TIME_FORMATS[0] + "\": ";
 
     }
 
-    /** Invoked in case when new user attempts to interact with the bot
+    /**
+     * Invoked in case when new user attempts to interact with the bot
      * but sends a text not equals to  '/start'
      *
      * @return the instruction to type '/start' to init dialog with the bot.
@@ -193,7 +279,7 @@ public class ChatService {
                     "It should be non-empty string kinda \"to do homework\" e.g., please:)";
         }
         //We suggested to the user to enter "/yes" to notify them about to do homework.
-        if(notifiedEvent.equals("/yes")) {
+        if (notifiedEvent.equals("/yes")) {
             notifiedEvent = "to do homework";
         }
         //Set information about notified event into chat entry
@@ -241,10 +327,14 @@ public class ChatService {
             return "You haven't got any reminders yet. Use the /create command to create a new reminder first.";
         }
 
-        StringBuilder resultBuilder = new StringBuilder("Your have set the next reminders:\n");
+        StringBuilder resultBuilder = new StringBuilder("We have set the next reminders for you:\n\n");
         notifications.forEach(notification -> {
-            resultBuilder.append(notification.getTargetTime());
-            resultBuilder.append('\t');
+            Timestamp timestamp = notification.getTargetTime();
+            resultBuilder.append(timestamp);
+            resultBuilder.append(
+                    (timestamp.getTime() < System.currentTimeMillis())?
+                        "\t you had pleasure " :
+                        "\t you will have pleasure ");
             resultBuilder.append(notification.getMessage());
             resultBuilder.append('\n');
 
