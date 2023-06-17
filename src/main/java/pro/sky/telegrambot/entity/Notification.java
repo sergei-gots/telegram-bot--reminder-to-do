@@ -1,8 +1,7 @@
 package pro.sky.telegrambot.entity;
 
 import javax.persistence.*;
-import java.sql.Timestamp;
-import java.time.OffsetDateTime;
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name="notifications")
@@ -15,13 +14,13 @@ public class Notification {
     @ManyToOne
     private ChatEntry chat;
 
-    Timestamp targetTime;
+    LocalDateTime targetTime;
 
     String message;
 
     public Notification(long id,
                         ChatEntry chat,
-                        Timestamp targetTime,
+                        LocalDateTime targetTime,
                         String message
     ) {
         this.id = id;
@@ -45,16 +44,9 @@ public class Notification {
         return chat;
     }
 
-    public void setChatId(ChatEntry chat) {
-        this.chat = chat;
-    }
 
-    public Timestamp getTargetTime() {
+    public LocalDateTime getTargetTime() {
         return targetTime;
-    }
-
-    public void setTargetTime(Timestamp targetTime) {
-        this.targetTime = targetTime;
     }
 
     public String getMessage() {

@@ -16,24 +16,24 @@ import pro.sky.telegrambot.listener.TelegramBotUpdatesListener;
 import pro.sky.telegrambot.repository.ChatRepository;
 import pro.sky.telegrambot.repository.NotificationRepository;
 
-import java.sql.Time;
-import java.sql.Timestamp;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.Date;
+import java.util.TimeZone;
 
 @Service
 public class ChatService {
 
     final private Logger logger = LoggerFactory.getLogger(TelegramBotUpdatesListener.class);
-    private static final long TIME_ZONE_DELTA_SHOULD_BE_REPLACED_WITH_TIME_ZONE_HANDLING = 3_600_000 * 3;
-    private static final long ONE_MINUTE = 60_000;
     private static final String LIST_OF_COMMANDS =
             "\n You can control me by sending these commands:\n" +
                     "\n /create - to create a new notification" +
                     "\n /list - to view the list of all your notifications" +
-                    "\n /reset - to reset me and discard notification's draft we may have made.";
+                    "\n /reset - to reset me and discard notification's draft we may have made."+
+                    "\n /author - to view info about my author.";
     private static final String[] DATE_FORMATS = {"dd/MM/yyyy", "dd-MM-yyyy", "dd.MM.yyyy"};
     private static final String[] TIME_FORMATS = {"HH:mm"};
 
@@ -83,7 +83,7 @@ public class ChatService {
     private void updateChatEntry(Update update, ChatStates chatState, String message) {
 
         Chat chat = update.message().chat();
-        ChatEntry resultChatEntry = chatRepository.findById((chat.id()))
+        chatRepository.findById((chat.id()))
                 //reset chat's data.
                 .map(chatEntry -> {
                     chatEntry.setState(chatState);
@@ -92,12 +92,10 @@ public class ChatService {
                     return chatRepository.save(chatEntry);
                 })
                 //If not then create a new entry
-                .orElseGet(() -> {
-                            return chatRepository.save(new ChatEntry(
-                                    chat.id(),
-                                    chat.firstName()
-                            ));
-                        }
+                .orElseGet(() -> chatRepository.save(new ChatEntry(
+                        chat.id(),
+                        chat.firstName()
+                ))
                 );
     }
 
@@ -148,7 +146,7 @@ public class ChatService {
     private String handleInputTimeState(Update update, ChatEntry chatEntry) {
         printMethodInfoLog("handleInputTimeState(Update update, ChatEntry chatEntry)", update);
 
-        Date time = null;
+        Date time;
         try {
             time = timeFormatter.parse(update.message().text());
         } catch (ParseException e) {
@@ -164,24 +162,16 @@ public class ChatService {
         System.out.println("time = " + time);
 
         //TODO TIME ZONE ISSUE HOW NEED TO BE SOLVED
-        // **System.out.println("time = " + time);
-        // System.out.println("time.getTime() = " + time.getTime());
-        // System.out.println("chatEntry.getDate() = " + chatEntry.getDate());
-        // System.out.println("chatEntry.getDate().getTime() = " + chatEntry.getDate().getTime());
-        // System.out.println("System.currentTimeMillis() = " + System.currentTimeMillis());
-        // System.out.println("new Date(System.currentTimeMillis() = " + new Date(System.currentTimeMillis()));
-
 
         //Check that time is for more than one minute in future
 
-        long targetTime = time.getTime() + chatEntry.getDate().getTime();
-        if (targetTime <
-                System.currentTimeMillis()  - TIME_ZONE_DELTA_SHOULD_BE_REPLACED_WITH_TIME_ZONE_HANDLING) {
+        long targetTime = time.getTime() + chatEntry.getDate().getTime()
+                + TimeZone.getDefault().getRawOffset();
+        if (targetTime < System.currentTimeMillis()) {
             return chatEntry.getUserFirstName() + ", date-n-time you entered is already in past. \n" +
                     "\nPlease, tell me another time:";
         }
-        if (targetTime <
-                System.currentTimeMillis() + 60_000 - TIME_ZONE_DELTA_SHOULD_BE_REPLACED_WITH_TIME_ZONE_HANDLING) {
+        if (targetTime < System.currentTimeMillis() + 60_000L) {
             return chatEntry.getUserFirstName() + ", date-n-time you entered are too near to be in past. \n" +
                     "\nPlease, tell me another time:";
         }
@@ -193,9 +183,9 @@ public class ChatService {
         notificationRepository.save(new Notification(
                 0,
                 chatEntry,
-                new Timestamp(time.getTime() +
-                        chatEntry.getDate().getTime() +
-                        TIME_ZONE_DELTA_SHOULD_BE_REPLACED_WITH_TIME_ZONE_HANDLING),
+                LocalDateTime.ofInstant(
+                        Instant.ofEpochMilli(targetTime),
+                        TimeZone.getDefault().toZoneId()),
                 chatEntry.getMessage()));
 
         // Using DateFormat format method we can create a string
@@ -210,7 +200,7 @@ public class ChatService {
     private String handleInputDateState(Update update, ChatEntry chatEntry) {
         printMethodInfoLog("handleInputDateState(Update update, ChatEntry chatEntry)", update);
 
-        Date date = null;
+        Date date;
 
         try {
             date = dateFormatter.parse(update.message().text());
@@ -303,12 +293,10 @@ public class ChatService {
         Chat chat = update.message().chat();
         return chatRepository.findById((chat.id()))
                 //If chat entry is not presented in db then create a new one
-                .orElseGet(() -> {
-                            return chatRepository.save(new ChatEntry(
-                                    chat.id(),
-                                    chat.firstName()
-                            ));
-                        }
+                .orElseGet(() -> chatRepository.save(new ChatEntry(
+                        chat.id(),
+                        chat.firstName()
+                ))
                 );
     }
 
@@ -328,11 +316,12 @@ public class ChatService {
         }
 
         StringBuilder resultBuilder = new StringBuilder("We have set the next reminders for you:\n\n");
+        LocalDateTime now = LocalDateTime.now();
         notifications.forEach(notification -> {
-            Timestamp timestamp = notification.getTargetTime();
-            resultBuilder.append(timestamp);
+            LocalDateTime targetTime = notification.getTargetTime();
+            resultBuilder.append(targetTime);
             resultBuilder.append(
-                    (timestamp.getTime() < System.currentTimeMillis())?
+                    (targetTime.isBefore(now))?
                         "\t you had pleasure " :
                         "\t you will have pleasure ");
             resultBuilder.append(notification.getMessage());

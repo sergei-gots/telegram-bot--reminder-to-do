@@ -11,6 +11,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import pro.sky.telegrambot.service.ChatService;
+import pro.sky.telegrambot.service.NotificationReminderService;
 
 import javax.annotation.PostConstruct;
 import java.util.List;
@@ -25,7 +26,7 @@ public class TelegramBotUpdatesListener implements UpdatesListener {
     @Autowired
     private TelegramBot telegramBot;
 
-    public TelegramBotUpdatesListener(ChatService chatService) {
+    public TelegramBotUpdatesListener(ChatService chatService, NotificationReminderService reminderService) {
         this.chatService = chatService;
     }
 
@@ -47,14 +48,15 @@ public class TelegramBotUpdatesListener implements UpdatesListener {
             String text = update.message().text();
             logger.info("Processing update: text={}, chat-id={}", text, chatId);
             // Process your updates here
-            String resultText = null;
+            String resultText;
             switch(text) {
                 case "/start"   :
                 case "/ушедомс" : resultText = chatService.handleStart(update)  ; break;
                 case "/reset"   : resultText = chatService.handleReset(update)  ; break;
                 case "/list"    : resultText = chatService.handleList(update)   ; break;
                 case "/create"  : resultText = chatService.handleCreate(update) ; break;
-                case "/author" :  resultText = "Sergei Gots, https://github.com/Sergei-Gots";
+                case "/author" :  resultText = "My author is Sergei Gots,\n"
+                        + "and my source code could be found somewhere on https://github.com/Sergei-Gots"; break;
                 default         : resultText = chatService.handle(update);
             }
             SendResponse sendResponse = telegramBot.execute(
