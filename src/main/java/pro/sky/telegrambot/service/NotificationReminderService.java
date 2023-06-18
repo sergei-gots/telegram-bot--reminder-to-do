@@ -8,7 +8,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import pro.sky.telegrambot.entity.Notification;
-import pro.sky.telegrambot.listener.TelegramBotUpdatesListener;
 import pro.sky.telegrambot.repository.NotificationRepository;
 
 import java.time.LocalDateTime;
@@ -18,7 +17,7 @@ import java.util.Collection;
 @Service
 public class NotificationReminderService {
 
-    final private Logger logger = LoggerFactory.getLogger(TelegramBotUpdatesListener.class);
+    final private Logger logger = LoggerFactory.getLogger(NotificationReminderService.class);
 
     final private TelegramBot telegramBot;
     final private NotificationRepository notificationRepository;
@@ -32,7 +31,7 @@ public class NotificationReminderService {
     @Scheduled(fixedDelay = 60_000L)
     public void run() {
         LocalDateTime currentTime = LocalDateTime.now().truncatedTo(ChronoUnit.MINUTES);
-        logger.info("run has been invoked. now ={}", currentTime);
+        logger.info("run has been invoked. now = {}", currentTime);
         Collection<Notification> readyNotifications
                 =  notificationRepository.findByTargetTime(currentTime);
         logger.info("Amount of notifications to sent = {}", readyNotifications.size());

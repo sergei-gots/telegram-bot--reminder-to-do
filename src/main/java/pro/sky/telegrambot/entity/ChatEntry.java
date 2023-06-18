@@ -1,8 +1,8 @@
 package pro.sky.telegrambot.entity;
 
 import javax.persistence.*;
-import java.sql.Time;
-import java.sql.Date;
+import java.time.LocalDate;
+import java.time.LocalTime;
 
 @Entity
 @Table(name="chats")
@@ -39,10 +39,10 @@ public class ChatEntry {
 
 
     @Column(name = "target_date")
-    private Date date;
+    private LocalDate date;
 
     @Column(name = "target_time")
-    private Time time;
+    private LocalTime time;
 
     public ChatEntry() {
     }
@@ -52,8 +52,8 @@ public class ChatEntry {
                      Languages lang,
                      String userFirstName,
                      String message,
-                     Date date,
-                     Time time) {
+                     LocalDate date,
+                     LocalTime time) {
         this.id = id;
         this.state = state;
         this.lang = lang;
@@ -108,19 +108,19 @@ public class ChatEntry {
         this.message = message;
     }
 
-    public Date getDate() {
+    public LocalDate getDate() {
         return date;
     }
 
-    public void setDate(Date date) {
+    public void setDate(LocalDate date) {
         this.date = date;
     }
 
-    public Time getTime() {
+    public LocalTime getTime() {
         return time;
     }
 
-    public void setTime(Time time) {
+    public void setTime(LocalTime time) {
         this.time = time;
     }
 

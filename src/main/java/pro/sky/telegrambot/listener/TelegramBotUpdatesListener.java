@@ -26,7 +26,7 @@ public class TelegramBotUpdatesListener implements UpdatesListener {
     @Autowired
     private TelegramBot telegramBot;
 
-    public TelegramBotUpdatesListener(ChatService chatService, NotificationReminderService reminderService) {
+    public TelegramBotUpdatesListener(ChatService chatService) {
         this.chatService = chatService;
     }
 
@@ -48,6 +48,9 @@ public class TelegramBotUpdatesListener implements UpdatesListener {
                 Long chatId = update.message().chat().id();
                 String text = update.message().text();
                 logger.info("Processing update: text={}, chat-id={}", text, chatId);
+                if(text == null) {
+                    text = "";
+                }
                 // Process your updates here
                 String resultText;
                 switch (text) {
