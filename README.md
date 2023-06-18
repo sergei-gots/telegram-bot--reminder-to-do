@@ -1,7 +1,7 @@
 # telegram-bot-reminder-to-do
 <u>Studying course work<u>
 
-Attention: the project is in the branch <b>master</b>
+Attention: the project is in the branch "<b>master</b>"
 <br>
 <br>
 Telegram bot notifies user at the specified date-n-time about having to do a homework.
