@@ -48,11 +48,6 @@ public class ChatService {
     // Create an instance of SimpleDateFormat used for parsing/formatting
     // the string representation of time according to the chosen pattern
     private final DateTimeFormatter timeFormatter = new DateTimeFormatterBuilder()
-            /*.appendValue(HOUR_OF_DAY, 2)
-            .appendLiteral(':')
-            .appendValue(MINUTE_OF_HOUR, 2)
-            .toFormatter(Locale.getDefault());
-*/
             .appendPattern(TIME_FORMATS[0]).toFormatter();
 
     final private ChatRepository chatRepository;
