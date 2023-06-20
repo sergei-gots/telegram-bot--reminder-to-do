@@ -144,6 +144,11 @@ public class ChatService {
         }
     }
 
+    /** Will be invoked when chat is either in the state START or COMPLETED but the command made by user
+     * is unclear.
+      * @param update - telegram update
+     * @return List of options available for the user
+     */
     private String handleStateCompleted(Update update) {
         printMethodInfoLog("handleInputCompleted(Update update)", update);
         updateChatEntry(update, ChatStates.START, "");
@@ -154,10 +159,19 @@ public class ChatService {
 
     }
 
+    /**
+     * Parses time input by the user. If it is correct and parsing successful - creates notification's entry
+     * in database.
+     * @param update - telegram update contains text with user input time
+     * @param chatEntry - chat entry for which this update is applied
+     * @return instruction to the user with suggestion what to do next. In case when the time input
+     * was successfully parsed  - it is the last step in creating a new notification - full information
+     * about the created notification.
+     */
     private String parseInputTime(Update update, ChatEntry chatEntry) {
         printMethodInfoLog("parseInputTime(Update update, ChatEntry chatEntry)", update);
 
-        LocalTime time = null;
+        LocalTime time;
         String text = update.message().text();
 
         if(text == null) {
@@ -173,9 +187,6 @@ public class ChatService {
 
         try {
             time = LocalTime.parse(text, timeFormatter);
-        }
-        catch (NullPointerException e) {
-
         }
         catch (DateTimeParseException e) {
             logger.info("DateTimeParseException while parsing input time = \"{}\" is thrown with the message: {}",
@@ -195,7 +206,6 @@ public class ChatService {
         logger.trace("System.currentTimeMillis() = {}", System.currentTimeMillis());
         //Check that time is for more than one minute in future
         LocalDateTime dateTime = LocalDateTime.of(chatEntry.getDate(), time);
-        ;
 
         if (dateTime.isBefore(now())) {
             return chatEntry.getUserFirstName() + ", date-n-time you entered is already in past. \n" +

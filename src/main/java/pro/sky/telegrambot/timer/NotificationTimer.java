@@ -1,4 +1,4 @@
-package pro.sky.telegrambot.service;
+package pro.sky.telegrambot.timer;
 
 import com.pengrad.telegrambot.TelegramBot;
 import com.pengrad.telegrambot.request.SendMessage;
@@ -6,29 +6,30 @@ import com.pengrad.telegrambot.response.SendResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
-import org.springframework.stereotype.Service;
+import org.springframework.stereotype.Component;
 import pro.sky.telegrambot.entity.Notification;
 import pro.sky.telegrambot.repository.NotificationRepository;
 
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.Collection;
+import java.util.concurrent.TimeUnit;
 
-@Service
-public class NotificationReminderService {
+@Component
+public class NotificationTimer {
 
-    final private Logger logger = LoggerFactory.getLogger(NotificationReminderService.class);
+    final private Logger logger = LoggerFactory.getLogger(NotificationTimer.class);
 
     final private TelegramBot telegramBot;
     final private NotificationRepository notificationRepository;
 
-    public NotificationReminderService(TelegramBot telegramBot, NotificationRepository notificationRepository) {
+    public NotificationTimer(TelegramBot telegramBot, NotificationRepository notificationRepository) {
         logger.info("NotificationReminderService constructor has been invoked");
         this.telegramBot = telegramBot;
         this.notificationRepository = notificationRepository;
     }
 
-    @Scheduled(fixedDelay = 60_000L)
+    @Scheduled(fixedDelay = 1, timeUnit = TimeUnit.MINUTES)
     public void run() {
         LocalDateTime currentTime = LocalDateTime.now().truncatedTo(ChronoUnit.MINUTES);
         logger.info("run has been invoked. now = {}", currentTime);
