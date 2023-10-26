@@ -1,7 +1,7 @@
 # telegram-bot-reminder-to-do
 <u>Studying course work<u>
 
-<b>Diclaimer: attention - the project is in the branch "master</b>"
+<b>Diclaimer: attention - the project is in the branch "<a href="https://github.com/sergei-gots/skypro-telegram-bot-reminder-to-do/tree/master">master</a></b>"
 <br>
 <br>
 Telegram bot notifies user at the specified date-n-time about having to do a homework.
